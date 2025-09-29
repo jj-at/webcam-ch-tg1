@@ -14,7 +14,7 @@
 function actualizarFoto() {
     const img = document.getElementById('webcam-img');
     // Agregar timestamp actual para romper caché
-    img.src = "foto.jpg?t=" + new Date().getTime();
+    img.src = "foto_original_datos.jpg?t=" + new Date().getTime();
 }
 
 // Actualizar al cargar la página
@@ -31,7 +31,7 @@ setInterval(actualizarFoto, 60000);
     </div>
     <img src="foto_original_datos.jpg?t=1234567890" id="webcam-img">
     <!-- <img src="https://filedn.com/ljdwyGy7Ch4hHOiW8nMb2vF/foto_datos.jpg" id="webcam-img" alt="Webcam en vivo"> -->
-    <p><em>Actualizando cada 5 minutos...</em></p>
+    <p><em>Actualizando cada aproximadamente cada minuto...</em></p>
 
     <script>
         // Refresca la imagen cada 5 minutos (300000 ms) para evitar caché
