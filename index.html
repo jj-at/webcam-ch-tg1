@@ -25,6 +25,7 @@
             margin: 20px auto; 
             max-width: 600px; 
         }
+        .error { color: #e74c3c; }
     </style>
 </head>
 <body>
@@ -33,11 +34,11 @@
         <p>
             <strong>Temperatura:</strong> <span id="temp">--</span>°C | 
             <strong>Humedad:</strong> <span id="hum">--</span>% | 
+            <strong>Presión:</strong> <span id="pres">--</span> hPa<br>
             <strong>Última actualización:</strong> <span id="last-update">--:--</span>
         </p>
     </div>
     
-    <!-- ✅ Nombre CORRECTO del archivo (ajusta si es diferente) -->
     <img src="foto_original_datos.jpg" id="webcam-img" alt="Webcam en vivo">
     
     <p><em>Actualizando aproximadamente cada minuto...</em></p>
@@ -46,25 +47,80 @@
     <p>¿Te sirve esta webcam? <a href="https://paypal.me/tuusuario">¡Apóyame con una donación!</a> 🙏</p>
 
     <script>
-        // ✅ Función para actualizar la imagen y la hora
-        function actualizarTodo() {
-            const ahora = new Date();
-            const img = document.getElementById('webcam-img');
-            
-            // Romper caché con timestamp
-            img.src = "foto_original_datos.jpg?t=" + ahora.getTime();
-            
-            // Actualizar hora
-            document.getElementById('last-update').innerText = ahora.toLocaleTimeString();
-            
-            // Opcional: Aquí podrías cargar datos del CSV para temp/humedad
-            // (por ahora dejamos los valores fijos o los actualizas manualmente)
+        // Función para parsear la marca de tiempo (YYYYMMDDHHMMSS)
+        function parsearTimestamp(ts) {
+            const año = parseInt(ts.substring(0, 4));
+            const mes = parseInt(ts.substring(4, 6)) - 1; // Meses en JS son 0-11
+            const dia = parseInt(ts.substring(6, 8));
+            const hora = parseInt(ts.substring(8, 10));
+            const min = parseInt(ts.substring(10, 12));
+            const seg = parseInt(ts.substring(12, 14));
+            return new Date(año, mes, dia, hora, min, seg);
         }
 
-        // ✅ Ejecutar al cargar la página
+        // Función para cargar y mostrar datos del CSV
+        async function cargarDatosHoy() {
+            const hoy = new Date().toISOString().slice(0, 10).replace(/-/g, ""); // YYYYMMDD
+            const url = `datos/${hoy}.txt?t=${Date.now()}`;
+
+            try {
+                const respuesta = await fetch(url);
+                if (!respuesta.ok) throw new Error(`Archivo no encontrado: ${url}`);
+                
+                const texto = await respuesta.text();
+                const lineas = texto.split('\n').filter(linea => linea.trim() !== '');
+                
+                if (lineas.length === 0) throw new Error("Archivo vacío");
+                
+                // Tomar la ÚLTIMA línea (lectura más reciente)
+                const ultimaLinea = lineas[lineas.length - 1];
+                const columnas = ultimaLinea.split(',');
+                
+                if (columnas.length < 5) throw new Error("Formato inválido");
+                
+                // Extraer datos
+                const timestamp = columnas[0];
+                const temp1 = parseFloat(columnas[1]);
+                const temp2 = parseFloat(columnas[2]);
+                const humedad = parseFloat(columnas[3]);
+                const presion = parseFloat(columnas[4]);
+                
+                // Calcular temperatura promedio
+                const tempProm = ((temp1 + temp2) / 2).toFixed(1);
+                
+                // Actualizar elementos en la página
+                document.getElementById('temp').textContent = tempProm;
+                document.getElementById('hum').textContent = humedad;
+                document.getElementById('pres').textContent = presion.toFixed(1);
+                document.getElementById('last-update').textContent = 
+                    parsearTimestamp(timestamp).toLocaleTimeString();
+                    
+            } catch (error) {
+                console.error("Error al cargar datos:", error);
+                document.getElementById('temp').textContent = "--";
+                document.getElementById('hum').textContent = "--";
+                document.getElementById('pres').textContent = "--";
+                document.getElementById('last-update').textContent = "Error al cargar datos";
+                document.querySelector('.info').classList.add('error');
+            }
+        }
+
+        // Función para actualizar imagen y datos
+        function actualizarTodo() {
+            const ahora = new Date();
+            
+            // Actualizar imagen con anti-caché
+            const img = document.getElementById('webcam-img');
+            img.src = "foto_original_datos.jpg?t=" + ahora.getTime();
+            
+            // Cargar datos del CSV
+            cargarDatosHoy();
+        }
+
+        // Inicializar al cargar la página
         window.onload = function() {
             actualizarTodo();
-            // Actualizar cada 60 segundos (60000 ms)
+            // Actualizar cada 60 segundos
             setInterval(actualizarTodo, 60000);
         };
     </script>
