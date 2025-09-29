@@ -10,6 +10,20 @@
         .info { background: #e0f7fa; padding: 15px; border-radius: 8px; margin: 20px auto; max-width: 600px; }
     </style>
 </head>
+<script>
+function actualizarFoto() {
+    const img = document.getElementById('webcam-img');
+    // Agregar timestamp actual para romper caché
+    img.src = "foto.jpg?t=" + new Date().getTime();
+}
+
+// Actualizar al cargar la página
+actualizarFoto();
+
+// Opcional: actualizar cada X segundos (ej: cada 60 segundos)
+setInterval(actualizarFoto, 60000);
+</script>
+
 <body>
     <h1>🌤️ Webcam Clima en Vivo</h1>
     <div class="info">
