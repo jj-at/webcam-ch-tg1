@@ -57,46 +57,39 @@
             const seg = parseInt(ts.substring(12, 14));
             return new Date(año, mes, dia, hora, min, seg);
         }
-
-        // Función para cargar y mostrar datos del CSV
-        async function cargarDatosHoy() {
-            const hoy = new Date().toISOString().slice(0, 10).replace(/-/g, ""); // YYYYMMDD
-            const url = `datos/${hoy}.txt?t=${Date.now()}`;
-
+    
+        // Nueva función: cargar solo el último dato
+        async function cargarUltimoDato() {
+            const url = `ultimo_dato.txt?t=${Date.now()}`;
+    
             try {
                 const respuesta = await fetch(url);
-                if (!respuesta.ok) throw new Error(`Archivo no encontrado: ${url}`);
+                if (!respuesta.ok) throw new Error(`No se pudo cargar ${url}`);
                 
-                const texto = await respuesta.text();
-                const lineas = texto.split('\n').filter(linea => linea.trim() !== '');
+                const linea = (await respuesta.text()).trim();
+                if (!linea) throw new Error("Archivo vacío");
                 
-                if (lineas.length === 0) throw new Error("Archivo vacío");
-                
-                // Tomar la ÚLTIMA línea (lectura más reciente)
-                const ultimaLinea = lineas[lineas.length - 1];
-                const columnas = ultimaLinea.split(',');
-                
+                const columnas = linea.split(',');
                 if (columnas.length < 5) throw new Error("Formato inválido");
-                
-                // Extraer datos
+    
                 const timestamp = columnas[0];
                 const temp1 = parseFloat(columnas[1]);
                 const temp2 = parseFloat(columnas[2]);
                 const humedad = parseFloat(columnas[3]);
                 const presion = parseFloat(columnas[4]);
-                
-                // Calcular temperatura promedio
+    
+                // Promedio de temperaturas
                 const tempProm = ((temp1 + temp2) / 2).toFixed(1);
-                
-                // Actualizar elementos en la página
+    
                 document.getElementById('temp').textContent = tempProm;
                 document.getElementById('hum').textContent = humedad;
                 document.getElementById('pres').textContent = presion.toFixed(1);
                 document.getElementById('last-update').textContent = 
                     parsearTimestamp(timestamp).toLocaleTimeString();
-                    
+    
+                document.querySelector('.info').classList.remove('error');
             } catch (error) {
-                console.error("Error al cargar datos:", error);
+                console.error("Error al cargar ultimo_dato.txt:", error);
                 document.getElementById('temp').textContent = "--";
                 document.getElementById('hum').textContent = "--";
                 document.getElementById('pres').textContent = "--";
@@ -104,23 +97,16 @@
                 document.querySelector('.info').classList.add('error');
             }
         }
-
-        // Función para actualizar imagen y datos
+    
         function actualizarTodo() {
             const ahora = new Date();
-            
-            // Actualizar imagen con anti-caché
             const img = document.getElementById('webcam-img');
             img.src = "foto_original_datos.jpg?t=" + ahora.getTime();
-            
-            // Cargar datos del CSV
-            cargarDatosHoy();
+            cargarUltimoDato();
         }
-
-        // Inicializar al cargar la página
+    
         window.onload = function() {
             actualizarTodo();
-            // Actualizar cada 60 segundos
             setInterval(actualizarTodo, 60000);
         };
     </script>
