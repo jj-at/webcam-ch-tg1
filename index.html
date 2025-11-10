@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Webcam Clima Tecpán Guatemala, Chimaltenango - En Vivo</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            text-align: center; 
+            padding: 20px; 
+            background: #f0f8ff; 
+        }
+        img { 
+            max-width: 100%; 
+            height: auto; 
+            border: 3px solid #333; 
+            border-radius: 8px; 
+            margin: 20px 0; 
+        }
+        /* .info y .error no se utilizan más, puedes eliminarlos si quieres */
+        /* .info { 
+            background: #e0f7fa; 
+            padding: 15px; 
+            border-radius: 8px; 
+            margin: 20px auto; 
+            max-width: 600px; 
+        }
+        .error { color: #e74c3c; } */
+    </style>
+</head>
+<body>
+    <h1>📷 Webcam en Vivo</h1>
+    <!-- Sección de información climática eliminada -->
+    
+    <!-- El ID sigue siendo 'webcam-img' para que el JS funcione -->
+    <img src="" id="webcam-img" alt="Webcam en vivo"> 
+    
+    <p><em>La imagen se actualiza aproximadamente cada minuto...</em></p>
+    <p>
+        <a href="https://www.youtube.com/channel/UCDRn0hhsZLYW2vXFKQcPZVg/live" target="_blank" rel="noopener">
+            Ver transmisión en vivo en YouTube
+        </a>
+    </p>
+    <hr>
+    <p>¿Te sirve esta webcam? <a href="https://paypal.me/tuusuario">¡Apóyame con una donación!</a> 🙏</p>
+
+    <script>
+        // Define la URL base de tu imagen aquí
+        const URL_BASE_IMAGEN = "https://filedn.com/ljdwyGy7Ch4hHOiW8nMb2vF/foto_datos.jpg"; // Reemplaza con la URL real
+
+        function actualizarImagen() {
+            const ahora = new Date();
+            const img = document.getElementById('webcam-img');
+            // Agrega un parámetro de tiempo a la URL para evitar caché
+            img.src = `${URL_BASE_IMAGEN}?t=${ahora.getTime()}`;
+            // No se carga ni actualiza información climática
+        }
+
+        window.onload = function() {
+            actualizarImagen(); // Carga la imagen inmediatamente al cargar la página
+            setInterval(actualizarImagen, 60000); // Actualiza cada 60 segundos (60000 ms)
+        };
+    </script>
+</body>
+</html>
