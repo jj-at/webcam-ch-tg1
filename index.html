@@ -134,34 +134,41 @@
             satelliteLayer.setUrl(getSatelliteURL());
         }
 
-
         // ==========================================================
         // D. CAPA 2: RADAR EN VIVO (RAINVIEWER)
         // ==========================================================
-        var radarLayer = L.layerGroup(); // Inicializamos un grupo contenedor
-
+        // 1. Crear la capa y AÑADIRLA al mapa de Leaflet
+        var radarLayer = L.layerGroup().addTo(map); 
+        
         function cargarRadarRainViewer() {
             fetch('https://api.rainviewer.com/public/weather-maps.json')
                 .then(response => response.json())
                 .then(data => {
                     radarLayer.clearLayers(); // Limpiar capas anteriores al refrescar
-                    var host = data.host;
-                    var ultimasImagenes = data.radar.past;
+        
+                    var host = data.host; // p. ej. "https://tilecache.rainviewer.com"
+                    var ultimasImagenes = data.radar.past; // Array de imágenes pasadas
                     var ultimaRuta = ultimasImagenes[ultimasImagenes.length - 1].path;
-                    var tileUrl = host + ultimaRuta + '/256/{z}/{x}/{y}/2/1_1.png';
-
+                    
+                    // Construcción de la URL de teselas
+                    // {host}{path}/{size}/{z}/{x}/{y}/{color}/{options}.png
+                    var tileUrl = host + ultimaRuta + '/256/{z}/{x}/{y}/2/1_1.png'; //
+        
                     var tile = L.tileLayer(tileUrl, {
+                        tileSize: 256,
                         opacity: 0.7,
-                        attribution: 'Datos meteorológicos © RainViewer'
+                        maxNativeZoom: 7, // Limite real que ofrece RainViewer
+                        maxZoom: 19,       // Permite ver la capa estirada en zooms mayores
+                        attribution: 'Datos meteorológicos © <a href="https://www.rainviewer.com/" target="_blank">RainViewer</a>'
                     });
-
+        
                     radarLayer.addLayer(tile);
                 })
                 .catch(err => console.error('Error cargando RainViewer:', err));
         }
-
+        
+        // Llamar a la función
         cargarRadarRainViewer();
-
 
         // ==========================================================
         // E. CAPA 3: DEPARTAMENTOS Y ETIQUETAS (INAB)
