@@ -1,9 +1,13 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
     <title>Webcam Clima Tecpán Guatemala, Chimaltenango - En Vivo</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- CSS de Leaflet para el Mapa -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+
     <style>
         body { 
             font-family: Arial, sans-serif; 
@@ -11,58 +15,207 @@
             padding: 20px; 
             background: #f0f8ff; 
         }
-        img { 
+
+        /* Estilo para la imagen de la Webcam */
+        #webcam-img { 
             max-width: 100%; 
             height: auto; 
             border: 3px solid #333; 
             border-radius: 8px; 
-            margin: 20px 0; 
+            margin: 20px 0 5px 0; 
         }
-        /* .info y .error no se utilizan más, puedes eliminarlos si quieres */
-        /* .info { 
-            background: #e0f7fa; 
-            padding: 15px; 
+
+        /* Estilo para el contenedor del Mapa Satelital */
+        #mapa-container {
+            max-width: 900px;
+            margin: 30px auto;
+            text-align: left;
+        }
+
+        #mapa-satelital { 
+            width: 100%; 
+            height: 500px; 
+            border: 3px solid #333;
             border-radius: 8px; 
-            margin: 20px auto; 
-            max-width: 600px; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15); 
         }
-        .error { color: #e74c3c; } */
+
+        /* Estilos para las etiquetas de los departamentos */
+        .nombre-departamento {
+            background: transparent;
+            border: none;
+            color: white;
+            font-size: 11px;
+            font-weight: bold;
+            text-align: center;
+            text-shadow:
+                1px 1px 2px black,
+                -1px -1px 2px black,
+                1px -1px 2px black,
+                -1px 1px 2px black;
+            white-space: nowrap;
+        }
     </style>
 </head>
 <body>
+
+    <!-- 1. SECCIÓN WEBCAM -->
     <h1>📷 Webcam en Vivo</h1>
-    <!-- Sección de información climática eliminada -->
-    
-    <!-- El ID sigue siendo 'webcam-img' para que el JS funcione -->
     <img src="" id="webcam-img" alt="Webcam en vivo"> 
-    
     <p><em>La imagen se actualiza aproximadamente cada minuto...</em></p>
-    <!--
-    <p>
-        <a href="https://www.youtube.com/channel/UCDRn0hhsZLYW2vXFKQcPZVg/live" target="_blank" rel="noopener">
-            Ver transmisión en vivo en YouTube
-        </a>
-    </p>
-    -->
-    <hr>
-    <!-- <p>¿Te sirve esta webcam? <a href="https://paypal.me/tuusuario">¡Apóyame con una donación!</a> 🙏</p> -->
+
+    <hr style="margin: 40px 0;">
+
+    <!-- 2. SECCIÓN MAPA SATELITAL -->
+    <div id="mapa-container">
+        <h2>🛰️️ Satélite GOES GeoColor — Guatemala</h2>
+        <div id="mapa-satelital"></div>
+    </div>
+
+    <!-- JS de Leaflet -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <script>
-        // Define la URL base de tu imagen aquí
+        // ==========================================================
+        // A. WEBCAM EN VIVO
+        // ==========================================================
         const URL_BASE_IMAGEN = "https://lh3.googleusercontent.com/d/1MzSP5TCtzalEJcWWsg0PAHfV_61lf9Hd";
-        // const URL_BASE_IMAGEN = "https://filedn.com/ljdwyGy7Ch4hHOiW8nMb2vF/foto_datos.jpg";
 
-        function actualizarImagen() {
+        function actualizarWebcam() {
             const ahora = new Date();
             const img = document.getElementById('webcam-img');
-            // Agrega un parámetro de tiempo a la URL para evitar caché
             img.src = `${URL_BASE_IMAGEN}?t=${ahora.getTime()}`;
-            // No se carga ni actualiza información climática
         }
 
+
+        // ==========================================================
+        // B. MAPA SATELITAL GOES (LEAFLET)
+        // ==========================================================
+        var map = L.map('mapa-satelital').setView([15.5, -90.2], 7);
+
+        // Mapa Base ESRI
+        var esriTopo = L.tileLayer(
+            'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',
+            {
+                maxZoom: 12,
+                minZoom: 3,
+                attribution: 'Tiles © Esri'
+            }
+        ).addTo(map);
+
+        // Capa Satelital NOAA
+        var imageServer = 'https://satellitemaps.nesdis.noaa.gov/arcgis/rest/services/MERGED_GeoColor/ImageServer/exportImage';
+        var xmin = -97, ymin = 8, xmax = -84, ymax = 21;
+        var width = 2000, height = 1400;
+
+        function getSatelliteURL() {
+            return imageServer +
+                '?bbox=' + xmin + ',' + ymin + ',' + xmax + ',' + ymax +
+                '&bboxSR=4326' +
+                '&imageSR=4326' +
+                '&size=' + width + ',' + height +
+                '&format=jpgpng' +
+                '&transparent=false' +
+                '&f=image' +
+                '&_t=' + Date.now();
+        }
+
+        var satelliteLayer = L.imageOverlay(
+            getSatelliteURL(),
+            [[ymin, xmin], [ymax, xmax]],
+            {
+                opacity: 0.75,
+                interactive: false,
+                attribution: 'NOAA / NESDIS — GOES GeoColor'
+            }
+        ).addTo(map);
+
+        function actualizarSatelite() {
+            satelliteLayer.setUrl(getSatelliteURL());
+        }
+
+
+        // ==========================================================
+        // C. DEPARTAMENTOS DE GUATEMALA
+        // ==========================================================
+        var departamentosURL = 'https://sig.inab.gob.gt/server/rest/services/InformacionBase/Basemap_DinCob2016_2020/MapServer/0/query?where=1%3D1&outFields=*&returnGeometry=true&f=geojson';
+        var departamentosLayer = L.layerGroup();
+
+        fetch(departamentosURL)
+            .then(res => res.json())
+            .then(data => {
+                var departamentos = L.geoJSON(data, {
+                    style: { color: 'white', weight: 1.5, opacity: 0.9, fill: false },
+                    onEachFeature: function(feature, layer) {
+                        var nombre = feature.properties.NOMBRE || feature.properties.NOMBRE_DPT || feature.properties.DEPARTAMEN || feature.properties.DEPARTAMENTO || feature.properties.name || '';
+                        if (nombre) {
+                            var centro = layer.getBounds().getCenter();
+                            L.marker(centro, {
+                                icon: L.divIcon({
+                                    className: 'nombre-departamento',
+                                    html: nombre,
+                                    iconSize: [120, 20],
+                                    iconAnchor: [60, 10]
+                                }),
+                                interactive: false
+                            }).addTo(departamentosLayer);
+                        }
+                    }
+                });
+
+                departamentos.addTo(departamentosLayer);
+                departamentosLayer.addTo(map);
+
+                departamentosLayer.eachLayer(function(layer) {
+                    if (layer instanceof L.Marker) {
+                        layer.setZIndexOffset(1000);
+                    }
+                });
+
+                L.geoJSON(data, {
+                    style: { color: 'white', weight: 3, opacity: 1, fill: false }
+                }).addTo(map);
+            })
+            .catch(err => console.error('Error cargando departamentos:', err));
+
+
+        // ==========================================================
+        // D. CONTROLES DEL MAPA (Capas y Opacidad)
+        // ==========================================================
+        L.control.layers(
+            { "Esri World Topo": esriTopo },
+            { "GOES GeoColor": satelliteLayer, "Departamentos": departamentosLayer }
+        ).addTo(map);
+
+        var opacityControl = L.control({ position: 'topright' });
+        opacityControl.onAdd = function(map) {
+            var div = L.DomUtil.create('div', 'leaflet-bar');
+            div.style.background = 'white';
+            div.style.padding = '8px';
+            div.innerHTML = '<label style="font-size:12px;">Opacidad<br><input id="opacitySlider" type="range" min="0" max="1" step="0.05" value="0.75"></label>';
+            L.DomEvent.disableClickPropagation(div);
+            return div;
+        };
+        opacityControl.addTo(map);
+
+        document.addEventListener('input', function(e) {
+            if (e.target.id === 'opacitySlider') {
+                satelliteLayer.setOpacity(parseFloat(e.target.value));
+            }
+        });
+
+
+        // ==========================================================
+        // E. INICIALIZACIÓN Y REFRESCADO AUTOMÁTICO
+        // ==========================================================
         window.onload = function() {
-            actualizarImagen(); // Carga la imagen inmediatamente al cargar la página
-            setInterval(actualizarImagen, 60000); // Actualiza cada 60 segundos (60000 ms)
+            actualizarWebcam();
+            
+            // Refresco de webcam cada 60 segundos
+            setInterval(actualizarWebcam, 60000);
+            
+            // Refresco de satélite cada 5 minutos
+            setInterval(actualizarSatelite, 300000);
         };
     </script>
 </body>
