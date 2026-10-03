@@ -55,6 +55,15 @@
                 -1px 1px 2px black;
             white-space: nowrap;
         }
+
+        .control-opacidad {
+            background: white;
+            padding: 8px 10px;
+            border-radius: 5px;
+            box-shadow: 0 0 5px rgba(0,0,0,0.3);
+            font-size: 12px;
+            margin-top: 5px;
+        }
     </style>
 </head>
 <body>
@@ -127,48 +136,54 @@
         var satelliteLayer = L.imageOverlay(
             getSatelliteURL(),
             [[ymin, xmin], [ymax, xmax]],
-            { opacity: 0.75, interactive: false, attribution: 'NOAA / NESDIS — GOES GeoColor' }
-        ).addTo(map);
+            { opacity: 0.5, interactive: false, attribution: 'NOAA / NESDIS — GOES GeoColor' }
+        ).addTo(map); // Añadida por defecto
 
         function actualizarSatelite() {
             satelliteLayer.setUrl(getSatelliteURL());
         }
 
+
         // ==========================================================
         // D. CAPA 2: RADAR EN VIVO (RAINVIEWER)
         // ==========================================================
-        // 1. Crear la capa y AÑADIRLA al mapa de Leaflet
+        // 1. Inicializamos y AÑADIMOS la capa al mapa desde el inicio
         var radarLayer = L.layerGroup().addTo(map); 
-        
+        var actualRadarTileLayer = null;
+
         function cargarRadarRainViewer() {
             fetch('https://api.rainviewer.com/public/weather-maps.json')
                 .then(response => response.json())
                 .then(data => {
                     radarLayer.clearLayers(); // Limpiar capas anteriores al refrescar
-        
-                    var host = data.host; // p. ej. "https://tilecache.rainviewer.com"
-                    var ultimasImagenes = data.radar.past; // Array de imágenes pasadas
+                    
+                    var host = data.host;
+                    var ultimasImagenes = data.radar.past;
+                    if (!ultimasImagenes || ultimasImagenes.length === 0) return;
+                    
                     var ultimaRuta = ultimasImagenes[ultimasImagenes.length - 1].path;
                     
-                    // Construcción de la URL de teselas
-                    // {host}{path}/{size}/{z}/{x}/{y}/{color}/{options}.png
-                    var tileUrl = host + ultimaRuta + '/256/{z}/{x}/{y}/2/1_1.png'; //
-        
-                    var tile = L.tileLayer(tileUrl, {
+                    // URL de la capa de lluvia en formato de teselas (Tiles)
+                    var tileUrl = host + ultimaRuta + '/256/{z}/{x}/{y}/2/1_1.png';
+
+                    var sliderRadar = document.getElementById('opacityRadarSlider');
+                    var opacidadInicial = sliderRadar ? parseFloat(sliderRadar.value) : 0.85;
+
+                    actualRadarTileLayer = L.tileLayer(tileUrl, {
                         tileSize: 256,
-                        opacity: 0.7,
-                        maxNativeZoom: 7, // Limite real que ofrece RainViewer
-                        maxZoom: 19,       // Permite ver la capa estirada en zooms mayores
+                        opacity: opacidadInicial,
+                        maxNativeZoom: 7, // Evita pedir zooms inexistentes a RainViewer
+                        maxZoom: 12,
                         attribution: 'Datos meteorológicos © <a href="https://www.rainviewer.com/" target="_blank">RainViewer</a>'
                     });
-        
-                    radarLayer.addLayer(tile);
+
+                    radarLayer.addLayer(actualRadarTileLayer);
                 })
                 .catch(err => console.error('Error cargando RainViewer:', err));
         }
-        
-        // Llamar a la función
+
         cargarRadarRainViewer();
+
 
         // ==========================================================
         // E. CAPA 3: DEPARTAMENTOS Y ETIQUETAS (INAB)
@@ -228,28 +243,36 @@
             "📍 Departamentos": departamentosLayer
         };
 
-        // Agregar el control al mapa (esquina superior derecha)
         L.control.layers(baseMaps, overlayMaps, { collapsed: false }).addTo(map);
 
 
         // ==========================================================
-        // G. CONTROL DE OPACIDAD PARA EL SATÉLITE
+        // G. CONTROLES DE OPACIDAD (SATÉLITE Y RADAR)
         // ==========================================================
         var opacityControl = L.control({ position: 'topright' });
         opacityControl.onAdd = function(map) {
-            var div = L.DomUtil.create('div', 'leaflet-bar');
-            div.style.background = 'white';
-            div.style.padding = '8px';
-            div.style.marginTop = '10px';
-            div.innerHTML = '<label style="font-size:12px;">Opacidad Satélite<br><input id="opacitySlider" type="range" min="0" max="1" step="0.05" value="0.75"></label>';
+            var div = L.DomUtil.create('div', 'leaflet-bar control-opacidad');
+            div.innerHTML = `
+                <label>Opacidad Satélite<br>
+                    <input id="opacitySatSlider" type="range" min="0" max="1" step="0.05" value="0.5">
+                </label><br><br>
+                <label>Opacidad Radar<br>
+                    <input id="opacityRadarSlider" type="range" min="0" max="1" step="0.05" value="0.85">
+                </label>
+            `;
             L.DomEvent.disableClickPropagation(div);
             return div;
         };
         opacityControl.addTo(map);
 
         document.addEventListener('input', function(e) {
-            if (e.target.id === 'opacitySlider') {
+            if (e.target.id === 'opacitySatSlider') {
                 satelliteLayer.setOpacity(parseFloat(e.target.value));
+            }
+            if (e.target.id === 'opacityRadarSlider') {
+                if (actualRadarTileLayer) {
+                    actualRadarTileLayer.setOpacity(parseFloat(e.target.value));
+                }
             }
         });
 
