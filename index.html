@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <!-- CSS de Leaflet para el Mapa -->
+    <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 
     <style>
@@ -16,7 +16,7 @@
             background: #f0f8ff; 
         }
 
-        /* Estilo para la imagen de la Webcam */
+        /* Estilo para la Webcam */
         #webcam-img { 
             max-width: 100%; 
             height: auto; 
@@ -25,7 +25,7 @@
             margin: 20px 0 5px 0; 
         }
 
-        /* Estilo para el contenedor del Mapa Satelital */
+        /* Contenedor del Mapa */
         #mapa-container {
             max-width: 900px;
             margin: 30px auto;
@@ -34,13 +34,13 @@
 
         #mapa-satelital { 
             width: 100%; 
-            height: 500px; 
+            height: 520px; 
             border: 3px solid #333;
             border-radius: 8px; 
             box-shadow: 0 4px 10px rgba(0,0,0,0.15); 
         }
 
-        /* Estilos para las etiquetas de los departamentos */
+        /* Etiquetas de Departamentos */
         .nombre-departamento {
             background: transparent;
             border: none;
@@ -59,20 +59,20 @@
 </head>
 <body>
 
-    <!-- 1. SECCIÓN WEBCAM -->
+    <!-- 1. WEBCAM EN VIVO -->
     <h1>📷 Webcam en Vivo</h1>
     <img src="" id="webcam-img" alt="Webcam en vivo"> 
     <p><em>La imagen se actualiza aproximadamente cada minuto...</em></p>
 
     <hr style="margin: 40px 0;">
 
-    <!-- 2. SECCIÓN MAPA SATELITAL -->
+    <!-- 2. MAPA INTERACTIVO (SATÉLITE Y RADAR) -->
     <div id="mapa-container">
-        <h2>🛰️️ Satélite GOES GeoColor — Guatemala</h2>
+        <h2>🛰 Monitoreo Meteorológico — Guatemala</h2>
         <div id="mapa-satelital"></div>
     </div>
 
-    <!-- JS de Leaflet -->
+    <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <script>
@@ -89,21 +89,25 @@
 
 
         // ==========================================================
-        // B. MAPA SATELITAL GOES (LEAFLET)
+        // B. MAPA BASE LEAFLET
         // ==========================================================
         var map = L.map('mapa-satelital').setView([15.5, -90.2], 7);
 
-        // Mapa Base ESRI
+        // Capas Base
         var esriTopo = L.tileLayer(
             'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',
-            {
-                maxZoom: 12,
-                minZoom: 3,
-                attribution: 'Tiles © Esri'
-            }
+            { maxZoom: 12, minZoom: 3, attribution: 'Tiles © Esri' }
         ).addTo(map);
 
-        // Capa Satelital NOAA
+        var cartoVoyager = L.tileLayer(
+            'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+            { maxZoom: 12, minZoom: 4, attribution: '© OpenStreetMap | CartoDB' }
+        );
+
+
+        // ==========================================================
+        // C. CAPA 1: SATÉLITE GOES GEOCOLOR (NOAA)
+        // ==========================================================
         var imageServer = 'https://satellitemaps.nesdis.noaa.gov/arcgis/rest/services/MERGED_GeoColor/ImageServer/exportImage';
         var xmin = -97, ymin = 8, xmax = -84, ymax = 21;
         var width = 2000, height = 1400;
@@ -123,11 +127,7 @@
         var satelliteLayer = L.imageOverlay(
             getSatelliteURL(),
             [[ymin, xmin], [ymax, xmax]],
-            {
-                opacity: 0.75,
-                interactive: false,
-                attribution: 'NOAA / NESDIS — GOES GeoColor'
-            }
+            { opacity: 0.75, interactive: false, attribution: 'NOAA / NESDIS — GOES GeoColor' }
         ).addTo(map);
 
         function actualizarSatelite() {
@@ -136,7 +136,35 @@
 
 
         // ==========================================================
-        // C. DEPARTAMENTOS DE GUATEMALA
+        // D. CAPA 2: RADAR EN VIVO (RAINVIEWER)
+        // ==========================================================
+        var radarLayer = L.layerGroup(); // Inicializamos un grupo contenedor
+
+        function cargarRadarRainViewer() {
+            fetch('https://api.rainviewer.com/public/weather-maps.json')
+                .then(response => response.json())
+                .then(data => {
+                    radarLayer.clearLayers(); // Limpiar capas anteriores al refrescar
+                    var host = data.host;
+                    var ultimasImagenes = data.radar.past;
+                    var ultimaRuta = ultimasImagenes[ultimasImagenes.length - 1].path;
+                    var tileUrl = host + ultimaRuta + '/256/{z}/{x}/{y}/2/1_1.png';
+
+                    var tile = L.tileLayer(tileUrl, {
+                        opacity: 0.7,
+                        attribution: 'Datos meteorológicos © RainViewer'
+                    });
+
+                    radarLayer.addLayer(tile);
+                })
+                .catch(err => console.error('Error cargando RainViewer:', err));
+        }
+
+        cargarRadarRainViewer();
+
+
+        // ==========================================================
+        // E. CAPA 3: DEPARTAMENTOS Y ETIQUETAS (INAB)
         // ==========================================================
         var departamentosURL = 'https://sig.inab.gob.gt/server/rest/services/InformacionBase/Basemap_DinCob2016_2020/MapServer/0/query?where=1%3D1&outFields=*&returnGeometry=true&f=geojson';
         var departamentosLayer = L.layerGroup();
@@ -180,19 +208,33 @@
 
 
         // ==========================================================
-        // D. CONTROLES DEL MAPA (Capas y Opacidad)
+        // F. CONTROL DE CAPAS (SELECTOR DE CHECKBOXES/BOTONES)
         // ==========================================================
-        L.control.layers(
-            { "Esri World Topo": esriTopo },
-            { "GOES GeoColor": satelliteLayer, "Departamentos": departamentosLayer }
-        ).addTo(map);
+        var baseMaps = {
+            "Esri Topográfico": esriTopo,
+            "CartoDB Voyager": cartoVoyager
+        };
 
+        var overlayMaps = {
+            "🛰 Satélite GOES GeoColor": satelliteLayer,
+            "🌧 Radar RainViewer": radarLayer,
+            "📍 Departamentos": departamentosLayer
+        };
+
+        // Agregar el control al mapa (esquina superior derecha)
+        L.control.layers(baseMaps, overlayMaps, { collapsed: false }).addTo(map);
+
+
+        // ==========================================================
+        // G. CONTROL DE OPACIDAD PARA EL SATÉLITE
+        // ==========================================================
         var opacityControl = L.control({ position: 'topright' });
         opacityControl.onAdd = function(map) {
             var div = L.DomUtil.create('div', 'leaflet-bar');
             div.style.background = 'white';
             div.style.padding = '8px';
-            div.innerHTML = '<label style="font-size:12px;">Opacidad<br><input id="opacitySlider" type="range" min="0" max="1" step="0.05" value="0.75"></label>';
+            div.style.marginTop = '10px';
+            div.innerHTML = '<label style="font-size:12px;">Opacidad Satélite<br><input id="opacitySlider" type="range" min="0" max="1" step="0.05" value="0.75"></label>';
             L.DomEvent.disableClickPropagation(div);
             return div;
         };
@@ -206,16 +248,19 @@
 
 
         // ==========================================================
-        // E. INICIALIZACIÓN Y REFRESCADO AUTOMÁTICO
+        // H. INICIALIZACIÓN Y REFRESCADO
         // ==========================================================
         window.onload = function() {
             actualizarWebcam();
             
-            // Refresco de webcam cada 60 segundos
+            // Refrescar Webcam cada 60 segundos
             setInterval(actualizarWebcam, 60000);
             
-            // Refresco de satélite cada 5 minutos
+            // Refrescar Satélite GOES cada 5 minutos
             setInterval(actualizarSatelite, 300000);
+
+            // Refrescar Radar RainViewer cada 10 minutos
+            setInterval(cargarRadarRainViewer, 600000);
         };
     </script>
 </body>
