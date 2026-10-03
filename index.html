@@ -9,40 +9,27 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 
     <style>
-        * {
-            box-sizing: border-box;
-        }
-
         body { 
             font-family: Arial, sans-serif; 
             text-align: center; 
-            padding: 15px 10px; 
+            padding: 20px; 
             background: #f0f8ff; 
-            margin: 0;
-        }
-
-        h2 {
-            font-size: 1.3rem;
-            margin-bottom: 10px;
-        }
-
-        /* Contenedores Principales */
-        .mapa-seccion {
-            max-width: 900px;
-            margin: 20px auto;
-            text-align: left;
         }
 
         /* Estilo para la Webcam */
         #webcam-img { 
-            width: 100%; 
-            max-height: 520px;
-            object-fit: cover;
+            max-width: 100%; 
+            height: auto; 
             border: 3px solid #333; 
             border-radius: 8px; 
-            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
-            display: block;
-            margin: 10px 0;
+            margin: 20px 0 5px 0; 
+        }
+
+        /* Contenedores de Mapas */
+        .mapa-seccion {
+            max-width: 900px;
+            margin: 30px auto;
+            text-align: left;
         }
 
         #mapa-satelital { 
@@ -56,7 +43,7 @@
         /* Contenedor e Iframe de Blitzortung */
         .blitzortung-iframe {
             width: 100%;
-            height: 520px;
+            height: 550px;
             border: 3px solid #333;
             border-radius: 8px;
             box-shadow: 0 4px 10px rgba(0,0,0,0.15);
@@ -79,80 +66,24 @@
             white-space: nowrap;
         }
 
-        /* Botón y Panel Desplegable de Opacidad */
-        .contenedor-opacidad {
+        .control-opacidad {
             background: white;
+            padding: 8px 10px;
             border-radius: 5px;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+            box-shadow: 0 0 5px rgba(0,0,0,0.3);
             font-size: 12px;
-            overflow: hidden;
-        }
-
-        .btn-toggle-opacidad {
-            background: #ffffff;
-            border: none;
-            padding: 8px 12px;
-            font-weight: bold;
-            cursor: pointer;
-            width: 100%;
-            text-align: center;
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            color: #333;
-        }
-
-        .btn-toggle-opacidad:hover {
-            background: #f0f0f0;
-        }
-
-        .panel-sliders-opacidad {
-            display: none; /* Oculto por defecto */
-            padding: 10px;
-            border-top: 1px solid #ddd;
-            background: #fafafa;
-        }
-
-        .panel-sliders-opacidad.activo {
-            display: block; /* Se muestra al presionar el botón */
-        }
-
-        .panel-sliders-opacidad label {
-            display: block;
-            margin-bottom: 8px;
-        }
-
-        .panel-sliders-opacidad label:last-child {
-            margin-bottom: 0;
-        }
-
-        /* Ajustes específicos para móviles */
-        @media (max-width: 600px) {
-            body {
-                padding: 10px 5px;
-            }
-
-            #webcam-img, #mapa-satelital, .blitzortung-iframe {
-                height: 400px;
-                max-height: 60vh;
-            }
-
-            h2 {
-                font-size: 1.1rem;
-            }
+            margin-top: 5px;
         }
     </style>
 </head>
 <body>
 
     <!-- 1. WEBCAM EN VIVO -->
-    <div class="mapa-seccion">
-        <h2>📷 Webcam en Vivo</h2>
-        <img src="" id="webcam-img" alt="Webcam en vivo"> 
-        <p style="text-align: center; font-size: 0.9rem;"><em>La imagen se actualiza aproximadamente cada minuto...</em></p>
-    </div>
+    <h1>📷 Webcam en Vivo</h1>
+    <img src="" id="webcam-img" alt="Webcam en vivo"> 
+    <p><em>La imagen se actualiza aproximadamente cada minuto...</em></p>
 
-    <hr style="margin: 30px 0;">
+    <hr style="margin: 40px 0;">
 
     <!-- 2. MAPA INTERACTIVO (SATÉLITE GOES + RADAR RAINVIEWER + DEPARTAMENTOS) -->
     <div class="mapa-seccion">
@@ -160,12 +91,12 @@
         <div id="mapa-satelital"></div>
     </div>
 
-    <hr style="margin: 30px 0;">
+    <hr style="margin: 40px 0;">
 
     <!-- 3. MAPA DE RAYOS Y TORMENTAS EN TIEMPO REAL (BLITZORTUNG) -->
     <div class="mapa-seccion">
         <h2>⚡ Radar de Rayos y Tormentas en Tiempo Real (Blitzortung)</h2>
-        <p style="font-size: 0.9rem;">Muestra actividad eléctrica en tiempo real con colores según la antigüedad del rayo.</p>
+        <p>Muestra actividad eléctrica en tiempo real con colores según la antigüedad del rayo.</p>
         
         <iframe 
             class="blitzortung-iframe"
@@ -321,7 +252,7 @@
 
 
         // ==========================================================
-        // F. CONTROL DE CAPAS (COLAPSADO POR DEFECTO PARA AHORRAR ESPACIO)
+        // F. CONTROL DE CAPAS
         // ==========================================================
         var baseMaps = {
             "Esri Topográfico": esriTopo,
@@ -329,49 +260,33 @@
         };
 
         var overlayMaps = {
-            "Satélite GOES": satelliteLayer,
-            "Radar RainViewer": radarLayer,
-            "Departamentos": departamentosLayer
+            "🛰 Satélite GOES GeoColor": satelliteLayer,
+            "🌧 Radar RainViewer": radarLayer,
+            "📍 Departamentos": departamentosLayer
         };
 
-        // collapsed: true oculta la lista detrás de un icono
-        L.control.layers(baseMaps, overlayMaps, { collapsed: true }).addTo(map);
+        L.control.layers(baseMaps, overlayMaps, { collapsed: false }).addTo(map);
 
 
         // ==========================================================
-        // G. CONTROLES DE OPACIDAD DESPLEGABLES CON BOTÓN
+        // G. CONTROLES DE OPACIDAD (SATÉLITE Y RADAR)
         // ==========================================================
         var opacityControl = L.control({ position: 'topright' });
-
         opacityControl.onAdd = function(map) {
-            var div = L.DomUtil.create('div', 'leaflet-bar contenedor-opacidad');
+            var div = L.DomUtil.create('div', 'leaflet-bar control-opacidad');
             div.innerHTML = `
-                <button type="button" class="btn-toggle-opacidad" onclick="togglePanelOpacidad()">
-                    ⚙️ Opacidad
-                </button>
-                <div id="panelOpacidad" class="panel-sliders-opacidad">
-                    <label>Satélite<br>
-                        <input id="opacitySatSlider" type="range" min="0" max="1" step="0.05" value="0.6">
-                    </label>
-                    <label>Radar<br>
-                        <input id="opacityRadarSlider" type="range" min="0" max="1" step="0.05" value="0.8">
-                    </label>
-                </div>
+                <label>Opacidad Satélite<br>
+                    <input id="opacitySatSlider" type="range" min="0" max="1" step="0.05" value="0.6">
+                </label><br><br>
+                <label>Opacidad Radar<br>
+                    <input id="opacityRadarSlider" type="range" min="0" max="1" step="0.05" value="0.8">
+                </label>
             `;
             L.DomEvent.disableClickPropagation(div);
             return div;
         };
         opacityControl.addTo(map);
 
-        // Función para mostrar/ocultar el panel de opacidad
-        function togglePanelOpacidad() {
-            var panel = document.getElementById('panelOpacidad');
-            if (panel) {
-                panel.classList.toggle('activo');
-            }
-        }
-
-        // Listeners para ajustar la opacidad
         document.addEventListener('input', function(e) {
             if (e.target.id === 'opacitySatSlider') {
                 satelliteLayer.setOpacity(parseFloat(e.target.value));
