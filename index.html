@@ -25,8 +25,8 @@
             margin: 20px 0 5px 0; 
         }
 
-        /* Contenedor del Mapa */
-        #mapa-container {
+        /* Contenedores de Mapas */
+        .mapa-seccion {
             max-width: 900px;
             margin: 30px auto;
             text-align: left;
@@ -40,6 +40,16 @@
             box-shadow: 0 4px 10px rgba(0,0,0,0.15); 
         }
 
+        /* Contenedor e Iframe de Blitzortung */
+        .blitzortung-iframe {
+            width: 100%;
+            height: 550px;
+            border: 3px solid #333;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            background-color: #000;
+        }
+
         /* Etiquetas de Departamentos */
         .nombre-departamento {
             background: transparent;
@@ -51,7 +61,7 @@
             text-shadow:
                 1px 1px 2px black,
                 -1px -1px 2px black,
-                1px -1px 2px black,
+                1px 1px 2px black,
                 -1px 1px 2px black;
             white-space: nowrap;
         }
@@ -62,7 +72,6 @@
             border-radius: 5px;
             box-shadow: 0 0 5px rgba(0,0,0,0.3);
             font-size: 12px;
-            margin-top: 5px;
         }
     </style>
 </head>
@@ -75,9 +84,24 @@
 
     <hr style="margin: 40px 0;">
 
-    <!-- 2. MAPA INTERACTIVO (SATÉLITE Y RADAR) -->
-    <div id="mapa-container">
-        <h2>🛰 Monitoreo Meteorológico — Guatemala</h2>
+    <!-- 2. MAPA DE RAYOS Y TORMENTAS EN TIEMPO REAL (BLITZORTUNG) -->
+    <div class="mapa-seccion">
+        <h2>⚡ Radar de Rayos y Tormentas en Tiempo Real (Blitzortung)</h2>
+        <p>Muestra actividad eléctrica en tiempo real con colores según la antigüedad del rayo.</p>
+        
+        <iframe 
+            class="blitzortung-iframe"
+            src="https://map.blitzortung.org/index.php?interactive=1&NavigationControl=1&FullScreenControl=1&Cookies=0&InfoDiv=0&MenuButtonDiv=1&ScaleControl=1&MapStyle=1#7/15.5/-90.2"
+            title="Blitzortung Live Lightning Map"
+            allowfullscreen>
+        </iframe>
+    </div>
+
+    <hr style="margin: 40px 0;">
+
+    <!-- 3. MAPA SATELITAL GOES Y DEPARTAMENTOS -->
+    <div class="mapa-seccion">
+        <h2>🛰 Monitoreo Satelital GOES GeoColor — Guatemala</h2>
         <div id="mapa-satelital"></div>
     </div>
 
@@ -98,7 +122,7 @@
 
 
         // ==========================================================
-        // B. MAPA BASE LEAFLET
+        // B. MAPA LEAFLET (SATÉLITE + DEPARTAMENTOS)
         // ==========================================================
         var map = L.map('mapa-satelital').setView([15.5, -90.2], 7);
 
@@ -115,7 +139,7 @@
 
 
         // ==========================================================
-        // C. CAPA 1: SATÉLITE GOES GEOCOLOR (NOAA)
+        // C. CAPA: SATÉLITE GOES GEOCOLOR (NOAA)
         // ==========================================================
         var imageServer = 'https://satellitemaps.nesdis.noaa.gov/arcgis/rest/services/MERGED_GeoColor/ImageServer/exportImage';
         var xmin = -97, ymin = 8, xmax = -84, ymax = 21;
@@ -136,8 +160,8 @@
         var satelliteLayer = L.imageOverlay(
             getSatelliteURL(),
             [[ymin, xmin], [ymax, xmax]],
-            { opacity: 0.5, interactive: false, attribution: 'NOAA / NESDIS — GOES GeoColor' }
-        ).addTo(map); // Añadida por defecto
+            { opacity: 0.75, interactive: false, attribution: 'NOAA / NESDIS — GOES GeoColor' }
+        ).addTo(map);
 
         function actualizarSatelite() {
             satelliteLayer.setUrl(getSatelliteURL());
@@ -145,48 +169,7 @@
 
 
         // ==========================================================
-        // D. CAPA 2: RADAR EN VIVO (RAINVIEWER)
-        // ==========================================================
-        // 1. Inicializamos y AÑADIMOS la capa al mapa desde el inicio
-        var radarLayer = L.layerGroup().addTo(map); 
-        var actualRadarTileLayer = null;
-
-        function cargarRadarRainViewer() {
-            fetch('https://api.rainviewer.com/public/weather-maps.json')
-                .then(response => response.json())
-                .then(data => {
-                    radarLayer.clearLayers(); // Limpiar capas anteriores al refrescar
-                    
-                    var host = data.host;
-                    var ultimasImagenes = data.radar.past;
-                    if (!ultimasImagenes || ultimasImagenes.length === 0) return;
-                    
-                    var ultimaRuta = ultimasImagenes[ultimasImagenes.length - 1].path;
-                    
-                    // URL de la capa de lluvia en formato de teselas (Tiles)
-                    var tileUrl = host + ultimaRuta + '/256/{z}/{x}/{y}/2/1_1.png';
-
-                    var sliderRadar = document.getElementById('opacityRadarSlider');
-                    var opacidadInicial = sliderRadar ? parseFloat(sliderRadar.value) : 0.85;
-
-                    actualRadarTileLayer = L.tileLayer(tileUrl, {
-                        tileSize: 256,
-                        opacity: opacidadInicial,
-                        maxNativeZoom: 7, // Evita pedir zooms inexistentes a RainViewer
-                        maxZoom: 12,
-                        attribution: 'Datos meteorológicos © <a href="https://www.rainviewer.com/" target="_blank">RainViewer</a>'
-                    });
-
-                    radarLayer.addLayer(actualRadarTileLayer);
-                })
-                .catch(err => console.error('Error cargando RainViewer:', err));
-        }
-
-        cargarRadarRainViewer();
-
-
-        // ==========================================================
-        // E. CAPA 3: DEPARTAMENTOS Y ETIQUETAS (INAB)
+        // D. CAPA: DEPARTAMENTOS (INAB)
         // ==========================================================
         var departamentosURL = 'https://sig.inab.gob.gt/server/rest/services/InformacionBase/Basemap_DinCob2016_2020/MapServer/0/query?where=1%3D1&outFields=*&returnGeometry=true&f=geojson';
         var departamentosLayer = L.layerGroup();
@@ -230,7 +213,7 @@
 
 
         // ==========================================================
-        // F. CONTROL DE CAPAS (SELECTOR DE CHECKBOXES/BOTONES)
+        // E. CONTROLES DE CAPAS Y OPACIDAD
         // ==========================================================
         var baseMaps = {
             "Esri Topográfico": esriTopo,
@@ -239,27 +222,15 @@
 
         var overlayMaps = {
             "🛰 Satélite GOES GeoColor": satelliteLayer,
-            "🌧 Radar RainViewer": radarLayer,
             "📍 Departamentos": departamentosLayer
         };
 
         L.control.layers(baseMaps, overlayMaps, { collapsed: false }).addTo(map);
 
-
-        // ==========================================================
-        // G. CONTROLES DE OPACIDAD (SATÉLITE Y RADAR)
-        // ==========================================================
         var opacityControl = L.control({ position: 'topright' });
         opacityControl.onAdd = function(map) {
             var div = L.DomUtil.create('div', 'leaflet-bar control-opacidad');
-            div.innerHTML = `
-                <label>Opacidad Satélite<br>
-                    <input id="opacitySatSlider" type="range" min="0" max="1" step="0.05" value="0.5">
-                </label><br><br>
-                <label>Opacidad Radar<br>
-                    <input id="opacityRadarSlider" type="range" min="0" max="1" step="0.05" value="0.85">
-                </label>
-            `;
+            div.innerHTML = '<label>Opacidad Satélite<br><input id="opacitySatSlider" type="range" min="0" max="1" step="0.05" value="0.75"></label>';
             L.DomEvent.disableClickPropagation(div);
             return div;
         };
@@ -269,16 +240,11 @@
             if (e.target.id === 'opacitySatSlider') {
                 satelliteLayer.setOpacity(parseFloat(e.target.value));
             }
-            if (e.target.id === 'opacityRadarSlider') {
-                if (actualRadarTileLayer) {
-                    actualRadarTileLayer.setOpacity(parseFloat(e.target.value));
-                }
-            }
         });
 
 
         // ==========================================================
-        // H. INICIALIZACIÓN Y REFRESCADO
+        // F. INICIALIZACIÓN
         // ==========================================================
         window.onload = function() {
             actualizarWebcam();
@@ -288,9 +254,6 @@
             
             // Refrescar Satélite GOES cada 5 minutos
             setInterval(actualizarSatelite, 300000);
-
-            // Refrescar Radar RainViewer cada 10 minutos
-            setInterval(cargarRadarRainViewer, 600000);
         };
     </script>
 </body>
